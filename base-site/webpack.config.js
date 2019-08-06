@@ -1,25 +1,36 @@
 const path = require('path');
+const webpack = require('webpack');
+const merge = require("webpack-merge");
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
-const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin
+const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
+const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 module.exports = function (env, args) {
-    process.env.NODE_ENV = env;
+    let isDev = env === 'development' ? true : false;
     return {
         mode: env || 'development',
         entry: {
             app: path.resolve(__dirname, './src/main.js')
         },
         output: {
-            filename: '[name].[chunkhash].js', // 输出文件名
-            path: path.resolve(__dirname, 'dist'),
-            publicPath: '/'
+            filename: 'js/[name].[hash:7].js', // 输出文件名
+            path: path.resolve(__dirname, 'dist/static'),
+            publicPath: '/static/'
         },
-        devtool: 'none',
+        devtool: 'eval-source-map',
         devServer: {
             contentBase: './dist',
             compress: true,
-            port: 8070
+            port: 8070,
+            open: true,//自动拉起浏览器
+            hot: true,//热加载
+            proxy: {
+                '/api': {
+                    target: 'http://localhost:8081',
+                    pathRewrite: { '^/api': '/data' }
+                }
+            }
         },
         resolve: {
             alias: {
@@ -36,7 +47,7 @@ module.exports = function (env, args) {
                     test: /\.scss$/,
                     include: path.join(__dirname, './src'),
                     use: [{
-                        loader: "style-loader" //将JS字符串生成为style节点
+                        loader: MiniCssExtractPlugin.loader//"style-loader"
                     }, {
                         loader: "css-loader" //将CSS转化成CommonJS模块
                     }, {
@@ -60,7 +71,7 @@ module.exports = function (env, args) {
                         {
                             loader: 'file-loader',
                             options: {
-                                name: '[name].[ext]'
+                                name: 'images/[name].[ext]'
                             }
                         }
                     ]
@@ -68,20 +79,25 @@ module.exports = function (env, args) {
             ]
         },
         plugins: [
-           // new CleanWebpackPlugin(),
             new VueLoaderPlugin(),
-            //new BundleAnalyzerPlugin(),
             new HtmlWebpackPlugin({
                 title: '萌芽笔记，你的个人管家',
                 template: './index.html',
-                filename: 'index.html',
+                filename: '../index.html',
                 chunks: ['app'],
                 minify: { // 压缩HTML文件
                     removeComments: true, // 移除HTML中的注释
                     collapseWhitespace: true, // 删除空白符与换行符
                     minifyCSS: true// 压缩内联css
                 }
-            })
+            }),
+            new MiniCssExtractPlugin({
+                filename: isDev ? 'css/[name].css' : 'css/[name].[hash:7].css',
+                chunkFilename: isDev ? 'css/[id].css' : 'css/[id].[hash:7].css',
+            }),
+            new webpack.HotModuleReplacementPlugin()
+            //new BundleAnalyzerPlugin(),
+            // new CleanWebpackPlugin()
         ]
-    };
+    }
 }

@@ -6,3 +6,7 @@ new Vue({
     el: '#app',
     render: h => h(App)
 })
+if (module.hot) {
+    // 实现热更新
+    module.hot.accept();
+}
