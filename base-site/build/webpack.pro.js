@@ -6,35 +6,23 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const VueLoaderPlugin = require('vue-loader/lib/plugin');
 const BundleAnalyzerPlugin = require('webpack-bundle-analyzer').BundleAnalyzerPlugin;
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
+const UglifyJsPlugin = require('uglifyjs-webpack-plugin');
 module.exports = function (env, args) {
     let isDev = env === 'development' ? true : false;
     return {
         mode: env || 'development',
         entry: {
-            app: path.resolve(__dirname, './src/main.js')
+            app: path.resolve(__dirname, '../src/main.js')
         },
         output: {
             filename: 'js/[name].[hash:7].js', // 输出文件名
-            path: path.resolve(__dirname, 'dist/static'),
+            path: path.resolve(__dirname, '../dist/static'),
             publicPath: '/static/'
-        },
-        devtool: 'eval-source-map',
-        devServer: {
-            contentBase: './dist',
-            compress: true,
-            port: 8070,
-            open: true,//自动拉起浏览器
-            hot: true,//热加载
-            proxy: {
-                '/api': {
-                    target: 'http://localhost:8081',
-                    pathRewrite: { '^/api': '/data' }
-                }
-            }
         },
         resolve: {
             alias: {
-                "@": path.resolve(__dirname, './src')
+                "@": path.resolve(__dirname, '../src'),
+                "vue$": "vue/dist/vue.common.js"// 通过.vue文件进行模板编译时,需要添加此配置
             }
         },
         module: {
@@ -45,9 +33,9 @@ module.exports = function (env, args) {
                 },
                 {
                     test: /\.scss$/,
-                    include: path.join(__dirname, './src'),
+                    include: path.join(__dirname, '../src'),
                     use: [{
-                        loader: MiniCssExtractPlugin.loader//"style-loader"
+                        loader: MiniCssExtractPlugin.loader//把css抽出来生成单独的css文件
                     }, {
                         loader: "css-loader" //将CSS转化成CommonJS模块
                     }, {
@@ -78,7 +66,29 @@ module.exports = function (env, args) {
                 }
             ]
         },
+        optimization: {
+            minimizer: [new UglifyJsPlugin({
+                test: /\.js(\?.*)?$/i,
+                include: /\/includes/,
+                exclude: /(node_modules|bower_components)/,  //排除的文件，用正则表示
+                cache: true,   //是否启用缓存
+                sourceMap: false,
+                parallel: true, //多通道并行处理
+                extractComments: false,
+                uglifyOptions: {
+                    warnings:false,
+                    compress: {
+                        unused: true, //是否去掉未关联的函数和变量
+                        drop_console: false //是否屏蔽掉控制台输出
+                    },
+                    output: {
+                        comments: false
+                    }
+                }
+            })]
+        },
         plugins: [
+            new webpack.NamedModulesPlugin(),
             new VueLoaderPlugin(),
             new HtmlWebpackPlugin({
                 title: '萌芽笔记，你的个人管家',
@@ -95,9 +105,10 @@ module.exports = function (env, args) {
                 filename: isDev ? 'css/[name].css' : 'css/[name].[hash:7].css',
                 chunkFilename: isDev ? 'css/[id].css' : 'css/[id].[hash:7].css',
             }),
-            new webpack.HotModuleReplacementPlugin()
-            //new BundleAnalyzerPlugin(),
-            // new CleanWebpackPlugin()
+            new BundleAnalyzerPlugin(),
+            new CleanWebpackPlugin({
+                exclude: ["index.html"]
+            })
         ]
     }
 }
